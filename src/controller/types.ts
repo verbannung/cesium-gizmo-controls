@@ -82,17 +82,17 @@ export interface TranslateSessionContext extends SessionGeometryLock {
   readonly handle: HandleDescriptor
   readonly constraint:
     | {
-        readonly kind: 'axis'
+        readonly type: 'axis'
         readonly axisLocal: Cartesian3
         readonly axisWorld: Cartesian3
       }
     | {
-        readonly kind: 'plane'
+        readonly type: 'plane'
         readonly normalLocal: Cartesian3
         readonly normalWorld: Cartesian3
       }
     | {
-        readonly kind: 'view'
+        readonly type: 'view'
         readonly planeNormalWorld: Cartesian3
       }
 }
@@ -117,7 +117,7 @@ export interface ScaleSessionContext extends SessionGeometryLock {
   readonly handle: HandleDescriptor
   readonly constraint:
     | {
-        readonly kind: 'axis'
+        readonly type: 'axis'
         /** 对应分量是否为本次缩放的自由轴。 */
         readonly isXAxis: boolean
         readonly isYAxis: boolean
@@ -127,7 +127,7 @@ export interface ScaleSessionContext extends SessionGeometryLock {
         readonly startComponent: number
       }
     | {
-        readonly kind: 'uniform'
+        readonly type: 'uniform'
         readonly startRadiusWorld: number
       }
 }

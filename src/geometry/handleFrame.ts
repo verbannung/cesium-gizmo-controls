@@ -6,7 +6,7 @@ import type { Handle } from './handle'
  * 绘制与拾取共用同一条矩阵选择规则，避免两边各写一份 if 而漂移。
  */
 export function matrixForHandle(handle: Handle, frame: GeometryFrameContext): Matrix4 {
-  switch (handle.frameKind) {
+  switch (handle.viewType) {
     case 'view':
       return frame.viewMatrix
     case 'gizmo':

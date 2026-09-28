@@ -7,7 +7,6 @@ import {
   drawLabel,
   projectPoint,
   projectPolygon,
-  projectPolyline,
   projectSegment,
   strokePolyline,
   strokeSegment,
@@ -41,11 +40,11 @@ export class TranslateOverlay implements Overlay<TranslateOverlayState> {
         strokePolyline(context, [...polygon, polygon[0]])
       }
     } else {
-      const ring = projectPolyline(input, guide.ring)
-      if (ring) {
-        context.setLineDash([])
-        strokePolyline(context, ring)
-      }
+      // const ring = projectPolyline(input, guide.ring)
+      // if (ring) {
+      //   context.setLineDash([])
+      //   strokePolyline(context, ring)
+      // }
       this.drawDashedArrow(input, guide.movementArrow)
     }
 

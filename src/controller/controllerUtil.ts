@@ -1,5 +1,5 @@
 import { Cartesian3, Matrix3, Matrix4, Quaternion } from '@cesium/engine'
-import type { ResolvedConstraint } from '../geometry/types'
+import type { HandleCompute } from '../geometry/types'
 import type { ControllerFrameContext } from '../render/types'
 import type { ControlMode, ResolvedOptions } from '../types'
 import { intersectPlane } from '../util/ray'
@@ -42,14 +42,11 @@ const scratchScale = new Cartesian3()
 export function createDragDetailSeed(
   param: ControllerInputParam,
   options: ResolvedOptions,
+  mode: ControlMode,
 ): DragDetailSeed | null {
   const control = cloneControl(param.start.control)
   const toCameraLocal = computeToCameraLocal(control, param.frame)
-  const planeNormalLocal = resolveDragPlaneNormalLocal(
-    param.handle.mode,
-    param.handle.constraint,
-    toCameraLocal,
-  )
+  const planeNormalLocal = resolveDragPlaneNormalLocal(mode, param.handle.compute, toCameraLocal)
   if (!planeNormalLocal) return null
   if (Math.abs(Cartesian3.dot(planeNormalLocal, toCameraLocal)) < options.degenerateThreshold) {
     return null
@@ -105,23 +102,23 @@ function computeToCameraLocal(
 
 function resolveDragPlaneNormalLocal(
   mode: ControlMode,
-  constraint: ResolvedConstraint,
+  compute: HandleCompute,
   toCameraLocal: Cartesian3,
   result = new Cartesian3(),
 ): Cartesian3 | null {
-  switch (constraint.kind) {
+  switch (compute.type) {
     case 'axis': {
-      if (mode === 'rotate') return Cartesian3.clone(constraint.axisLocal, result)
+      if (mode === 'rotate') return Cartesian3.clone(compute.axisDirection, result)
       Cartesian3.multiplyByScalar(
-        constraint.axisLocal,
-        Cartesian3.dot(toCameraLocal, constraint.axisLocal),
+        compute.axisDirection,
+        Cartesian3.dot(toCameraLocal, compute.axisDirection),
         scratchProj,
       )
       Cartesian3.subtract(toCameraLocal, scratchProj, result)
       return normalizeOrNull(result)
     }
     case 'plane':
-      return Cartesian3.clone(constraint.normalLocal, result)
+      return Cartesian3.clone(compute.planeNormal, result)
     case 'view':
     case 'uniform':
       return Cartesian3.clone(toCameraLocal, result)

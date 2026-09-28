@@ -1,6 +1,6 @@
 import { Matrix4, type Ray, type Scene } from '@cesium/engine'
 import type { GeometryFrameContext } from '../render/types'
-import type { HandleDescriptor, HandleId } from './types'
+import type { HandleDescriptor, HandleId, HandleVisual } from './types'
 import type { ControlMode } from '../types'
 import type { BaseGeometry } from './baseGeometry'
 import { pickHandle } from './collisionUtil'
@@ -28,12 +28,14 @@ export class GeometryManager {
     this.activeGeometry.build()
   }
 
-  /** 拾取返回完整 HandleDescriptor，约束已在 Handle 创建时解析。 */
+  /** 拾取返回 HandleDescriptor（id / compute / color）。 */
   pick(worldRay: Ray): HandleDescriptor | null {
     const assets = this.activeGeometry?.getAssets()
     const frame = this.lastFrame
     if (!assets?.length || !frame) return null
-    return pickHandle(worldRay, assets, frame)?.descriptor ?? null
+    const hit = pickHandle(worldRay, assets, frame)
+    if (!hit) return null
+    return { id: hit.id, compute: hit.compute, color: hit.color }
   }
 
   /** 进入拖拽：只显示被拖的手柄，并高亮它。 */
@@ -77,13 +79,15 @@ export class GeometryManager {
     const dragging = this.activeHandleId !== null
     for (const handle of assets) {
       const isActive = dragging && handle.id === this.activeHandleId
+      const halfCull = needsHalfCull(handle.visual)
       for (const primitive of handle.primitives) {
         primitive.show = !dragging || isActive
-        if (!isRotateAxis(handle.id)) continue
+        if (!halfCull) continue
         const uniforms = (primitive.appearance as {
           uniforms?: Record<string, unknown>
         }).uniforms
         if (uniforms && 'u_cullBackHalf' in uniforms) {
+          // 空闲半环；激活整环（运行时规则，不进类型联合）。
           uniforms.u_cullBackHalf = isActive ? 0 : 1
         }
       }
@@ -109,6 +113,6 @@ export function createGeometry(mode: ControlMode, scene: Scene): BaseGeometry {
   }
 }
 
-function isRotateAxis(id: HandleId): boolean {
-  return id === 'rotate-x' || id === 'rotate-y' || id === 'rotate-z'
+function needsHalfCull(visual: HandleVisual): boolean {
+  return visual.type === 'ring' && visual.showBack === false
 }

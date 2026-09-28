@@ -1,11 +1,12 @@
 import { Cartesian3, Color } from '@cesium/engine'
+import { INNER_VIEW_AXIS_RADIUS, OUTER_VIEW_AXIS_RADIUS } from '../constants'
 import { BaseGeometry } from './baseGeometry'
-import { INNER_VIEW_AXIS_RADIUS } from '../constants'
 import {
+  RING_HALF_WIDTH_PX,
   buildBoxAxis,
   buildBoxAxisMeshes,
-  buildViewRing,
-  buildViewRingMeshes,
+  buildRing,
+  buildSolidDiskMesh,
 } from './geometryUtil'
 import { Handle } from './handle'
 
@@ -15,49 +16,66 @@ export class ScaleGeometry extends BaseGeometry {
     const Y = Cartesian3.UNIT_Y
     const Z = Cartesian3.UNIT_Z
 
-    const x = new Handle(
-      'scale-x',
-      'scale',
-      { kind: 'axis', axisLocal: X },
-      Color.RED,
-      'axisFlip',
-      buildBoxAxisMeshes(Y, Z),
-      buildBoxAxis(Y, Z, Color.RED),
-    )
-    const y = new Handle(
-      'scale-y',
-      'scale',
-      { kind: 'axis', axisLocal: Y },
-      Color.LIME,
-      'axisFlip',
-      buildBoxAxisMeshes(Z, X),
-      buildBoxAxis(Z, X, Color.LIME),
-    )
-    const z = new Handle(
-      'scale-z',
-      'scale',
-      { kind: 'axis', axisLocal: Z },
-      Color.DODGERBLUE,
-      'axisFlip',
-      buildBoxAxisMeshes(X, Y),
-      buildBoxAxis(X, Y, Color.DODGERBLUE),
-    )
-    const uniform = new Handle(
-      'scale-uniform',
-      'scale',
-      { kind: 'uniform' },
-      Color.WHITE,
-      'view',
-      buildViewRingMeshes(X, Y, INNER_VIEW_AXIS_RADIUS),
-      buildViewRing(X, Y, {
-        id: 'scale-uniform',
-        color: Color.WHITE,
-        radius: INNER_VIEW_AXIS_RADIUS,
-        cullHalf: false,
-      }),
-    )
-
-    this.assets = [x, y, z, uniform]
+    this.assets = [
+      new Handle(
+        'scale-x',
+        'axisFlip',
+        { type: 'box', u: Y, v: Z, color: Color.RED },
+        { type: 'box', u: Y, v: Z, priority: 2 },
+        { type: 'axis', axisDirection: X },
+        buildBoxAxisMeshes(Y, Z),
+        buildBoxAxis(Y, Z, Color.RED),
+      ),
+      new Handle(
+        'scale-y',
+        'axisFlip',
+        { type: 'box', u: Z, v: X, color: Color.LIME },
+        { type: 'box', u: Z, v: X, priority: 2 },
+        { type: 'axis', axisDirection: Y },
+        buildBoxAxisMeshes(Z, X),
+        buildBoxAxis(Z, X, Color.LIME),
+      ),
+      new Handle(
+        'scale-z',
+        'axisFlip',
+        { type: 'box', u: X, v: Y, color: Color.DODGERBLUE },
+        { type: 'box', u: X, v: Y, priority: 2 },
+        { type: 'axis', axisDirection: Z },
+        buildBoxAxisMeshes(X, Y),
+        buildBoxAxis(X, Y, Color.DODGERBLUE),
+      ),
+      new Handle(
+        'scale-uniform',
+        'view',
+        {
+          type: 'ring',
+          u: X,
+          v: Y,
+          radius: INNER_VIEW_AXIS_RADIUS,
+          halfWidthPx: RING_HALF_WIDTH_PX,
+          color: Color.WHITE,
+          showBack: true,
+        },
+        {
+          type: 'solid',
+          u: X,
+          v: Y,
+          radius: INNER_VIEW_AXIS_RADIUS,
+          priority: 0,
+        },
+        { type: 'uniform' },
+        [buildSolidDiskMesh(X, Y, OUTER_VIEW_AXIS_RADIUS)],
+        buildRing(
+          X,
+          Y,
+          'scale-uniform',
+          Color.WHITE,
+          OUTER_VIEW_AXIS_RADIUS,
+          false,
+          RING_HALF_WIDTH_PX,
+        ),
+      ),
+    ]
     for (const handle of this.assets) {
       for (const p of handle.primitives) this.scene.primitives.add(p)
     }

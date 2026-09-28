@@ -3,6 +3,8 @@
 !.gitignore
 !.github/
 !.github/**
+!.githooks/
+!.githooks/**
 !package.json
 !package-lock.json
 !README.md

@@ -1,0 +1,16 @@
+#!/bin/sh
+# 推送前门禁：与 release.yml 校验步骤对齐（不含发版）。
+# 任一失败则拒绝 push。跳过（仅紧急）：git push --no-verify
+
+set -e
+
+echo "==> pre-push: typecheck"
+npm run typecheck
+
+echo "==> pre-push: test"
+npm test
+
+echo "==> pre-push: build"
+npm run build
+
+echo "==> pre-push: ok"

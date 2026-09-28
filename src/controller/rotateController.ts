@@ -32,7 +32,10 @@ export class RotateController extends DragSession<RotateSessionContext, RotateDe
   }
 
   protected createSessionContext(param: ControllerInputParam): RotateSessionContext | null {
-    const seed = createDragDetailSeed(param, this.options)
+    const compute = param.handle.compute
+    if (compute.type !== 'axis' && compute.type !== 'view') return null
+
+    const seed = createDragDetailSeed(param, this.options, 'rotate')
     if (!seed) return null
 
     // 旋转平面的法线就是旋转轴，createDragDetailSeed 已按此规则建面。
@@ -40,7 +43,7 @@ export class RotateController extends DragSession<RotateSessionContext, RotateDe
     const axisLocal = Cartesian3.clone(seed.planeNormalLocal, new Cartesian3())
 
     // 半径守卫：起始交点离轴心太近则拖拽不稳定。
-      // 浮点数 除数太小，微小误差被极度放大
+    // 浮点数 除数太小，微小误差被极度放大
     Cartesian3.subtract(seed.startPointWorld, seed.planeOriginWorld, scratchStart)
     const radiusWorld = Cartesian3.magnitude(scratchStart)
     if (radiusWorld < this.options.minRotateRadius) return null
@@ -69,7 +72,7 @@ export class RotateController extends DragSession<RotateSessionContext, RotateDe
       startDirectionLocal,
       startDirectionWorld,
       radiusWorld,
-      viewAligned: param.handle.constraint.kind === 'view',
+      viewAligned: compute.type === 'view',
     }
   }
 

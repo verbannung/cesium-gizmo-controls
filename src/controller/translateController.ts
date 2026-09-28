@@ -39,27 +39,29 @@ export class TranslateController extends DragSession<TranslateSessionContext, Em
   }
 
   protected createSessionContext(param: ControllerInputParam): TranslateSessionContext | null {
-    const seed = createDragDetailSeed(param, this.options)
+    const seed = createDragDetailSeed(param, this.options, 'translate')
     if (!seed) return null
 
-    const constraint = param.handle.constraint
+    const compute = param.handle.compute
     let resolved: TranslateSessionContext['constraint']
 
-    if (constraint.kind === 'axis') {
-      const axisLocal = Cartesian3.clone(constraint.axisLocal, new Cartesian3())
+    if (compute.type === 'axis') {
+      const axisLocal = Cartesian3.clone(compute.axisDirection, new Cartesian3())
       const axisWorld = localDirectionToWorld(seed, axisLocal)
       if (!axisWorld) return null
-      resolved = { kind: 'axis', axisLocal, axisWorld }
-    } else if (constraint.kind === 'plane') {
-      const normalLocal = Cartesian3.clone(constraint.normalLocal, new Cartesian3())
+      resolved = { type: 'axis', axisLocal, axisWorld }
+    } else if (compute.type === 'plane') {
+      const normalLocal = Cartesian3.clone(compute.planeNormal, new Cartesian3())
       const normalWorld = localDirectionToWorld(seed, normalLocal)
       if (!normalWorld) return null
-      resolved = { kind: 'plane', normalLocal, normalWorld }
-    } else {
+      resolved = { type: 'plane', normalLocal, normalWorld }
+    } else if (compute.type === 'view') {
       resolved = {
-        kind: 'view',
+        type: 'view',
         planeNormalWorld: Cartesian3.clone(seed.planeNormalWorld, new Cartesian3()),
       }
+    } else {
+      return null
     }
 
     return {
@@ -110,11 +112,11 @@ export class TranslateController extends DragSession<TranslateSessionContext, Em
     Matrix4.multiplyByPointAsVector(context.worldToLocalAtStart, scratchDeltaW, scratchDeltaL)
 
     // 约束投影（局部系，R₀ 正交保证投影有效）
-    if (context.constraint.kind === 'axis') {
+    if (context.constraint.type === 'axis') {
       const a = context.constraint.axisLocal
       Cartesian3.multiplyByScalar(a, Cartesian3.dot(scratchDeltaL, a), scratchComp)
       Cartesian3.clone(scratchComp, scratchDeltaL)
-    } else if (context.constraint.kind === 'plane') {
+    } else if (context.constraint.type === 'plane') {
       const c = context.constraint.normalLocal
       Cartesian3.multiplyByScalar(c, Cartesian3.dot(scratchDeltaL, c), scratchComp)
       Cartesian3.subtract(scratchDeltaL, scratchComp, scratchDeltaL)
@@ -186,7 +188,7 @@ export class TranslateController extends DragSession<TranslateSessionContext, Em
     scale: number,
     currentWorld: Cartesian3,
   ): TranslateGuideWorld {
-    if (context.constraint.kind === 'axis') {
+    if (context.constraint.type === 'axis') {
       return {
         kind: 'axis',
         line: segmentThrough(
@@ -197,7 +199,7 @@ export class TranslateController extends DragSession<TranslateSessionContext, Em
       }
     }
 
-    if (context.constraint.kind === 'plane') {
+    if (context.constraint.type === 'plane') {
       return {
         kind: 'plane',
         polygon: planeQuad(center, context.constraint.normalWorld, PLANE_GUIDE_SIZE * scale),

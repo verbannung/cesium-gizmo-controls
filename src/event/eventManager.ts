@@ -21,14 +21,18 @@ export class EventManager {
   private active: DragSessionPort | null = null
   private cameraEnabledBackup = true
   private unbind: (() => void) | null = null
+  private mode: ControlMode
+
   constructor(
     private readonly input: InputSource,
     private readonly render: RenderSystem,
     private readonly geometry: GeometryManager,
     private readonly overlay: OverlayManager,
     private readonly options: ResolvedOptions,
-    private readonly modeProvider: Readonly<{ readonly mode: ControlMode }>,
-  ) {}
+    mode: ControlMode,
+  ) {
+    this.mode = mode
+  }
 
   init(): void {
     this.unbind = this.input.bindEvents({
@@ -38,13 +42,14 @@ export class EventManager {
     })
   }
 
-  changeMode(): void {
+  changeMode(mode: ControlMode): void {
     if (this.active) this.cancel()
+    this.mode = mode
   }
 
   private onPointerDown(input: PointerInput): void {
     if (this.active) return
-    const mode = this.modeProvider.mode
+    const mode = this.mode
     const handle = this.geometry.pick(input.rayWorld)
     if (!handle) return
 

@@ -56,10 +56,13 @@ export type {
 } from './types'
 
 export type {
+  HandleCompute,
+  HandleDefinition,
   HandleDescriptor,
-  HandleFrameKind,
   HandleId,
-  ResolvedConstraint,
+  HandlePicking,
+  HandleViewType,
+  HandleVisual,
 } from './geometry/types'
 
 export type {

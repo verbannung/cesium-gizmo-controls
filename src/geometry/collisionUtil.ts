@@ -4,30 +4,10 @@
  */
 import { Cartesian3, IntersectionTests, Matrix4, Ray } from '@cesium/engine'
 import type { GeometryFrameContext } from '../render/types'
-import type { HandleId } from './types'
+import type { HandlePicking, MeshData } from './types'
 import { hitsBoundingSphere } from '../util/ray'
 import { matrixForHandle, toCameraLocal } from './handleFrame'
-import type { MeshData } from './types'
 import type { Handle } from './handle'
-
-/** 拾取优先级： view = uniform > axis > plane */
-const PICK_PRIORITY: Record<HandleId, number> = {
-  'translate-xy': 1,
-  'translate-yz': 1,
-  'translate-zx': 1,
-  'translate-x': 2,
-  'translate-y': 2,
-  'translate-z': 2,
-  'rotate-x': 2,
-  'rotate-y': 2,
-  'rotate-z': 2,
-  'scale-x': 2,
-  'scale-y': 2,
-  'scale-z': 2,
-  'translate-view': 3,
-  'rotate-view': 3,
-  'scale-uniform': 3,
-}
 
 const scratchInv = new Matrix4()
 const scratchCamera = new Cartesian3()
@@ -49,11 +29,12 @@ export function pickHandle(
   let bestPri = -1
 
   for (const handle of ordered) {
+    const picking = handle.picking
     const localRay = toHandleLocalRay(worldRay, handle, frame, meshRay)
-    const t = intersectMeshes(localRay, handle.meshes, cameraLocal, cullBackFaces(handle.id))
+    const t = intersectMeshes(localRay, handle.meshes, cameraLocal, cullBackHalf(picking))
     if (t === null) continue
 
-    const pri = PICK_PRIORITY[handle.id]
+    const pri = picking.priority
     if (pri > bestPri || (pri === bestPri && t < bestT)) {
       bestPri = pri
       bestT = t
@@ -65,7 +46,9 @@ export function pickHandle(
 }
 
 export function sortHandle(handles: readonly Handle[]): Handle[] {
-  return handles.slice().sort((a, b) => PICK_PRIORITY[b.id] - PICK_PRIORITY[a.id])
+  return handles
+    .slice()
+    .sort((a, b) => b.picking.priority - a.picking.priority)
 }
 
 function toHandleLocalRay(
@@ -114,7 +97,7 @@ function intersectMeshes(
   return hit
 }
 
-/** 旋转环单面剔除；方片与其余双面 */
-function cullBackFaces(id: HandleId): boolean {
-  return id === 'rotate-x' || id === 'rotate-y' || id === 'rotate-z'
+/** 仅 ring 且 pickBack === false 时剔除背半环。 */
+function cullBackHalf(picking: HandlePicking): boolean {
+  return picking.type === 'ring' && picking.pickBack === false
 }

@@ -28,14 +28,14 @@ export class ScaleController extends DragSession<ScaleSessionContext, EmptyDragD
   }
 
   protected createSessionContext(param: ControllerInputParam): ScaleSessionContext | null {
-    const seed = createDragDetailSeed(param, this.options)
+    const seed = createDragDetailSeed(param, this.options, 'scale')
     if (!seed) return null
 
-    const constraint = param.handle.constraint
+    const compute = param.handle.compute
     let resolved: ScaleSessionContext['constraint']
 
-    if (constraint.kind === 'axis') {
-      const axisLocal = Cartesian3.clone(constraint.axisLocal, new Cartesian3())
+    if (compute.type === 'axis') {
+      const axisLocal = Cartesian3.clone(compute.axisDirection, new Cartesian3())
       const axisWorld = localDirectionToWorld(seed, axisLocal)
       if (!axisWorld) return null
 
@@ -46,7 +46,7 @@ export class ScaleController extends DragSession<ScaleSessionContext, EmptyDragD
 
       startOffsetLocal(seed, seed.startPointWorld, scratchStartLocal)
       resolved = {
-        kind: 'axis',
+        type: 'axis',
         isXAxis,
         isYAxis,
         isZAxis,
@@ -54,12 +54,14 @@ export class ScaleController extends DragSession<ScaleSessionContext, EmptyDragD
         axisWorld,
         startComponent: Cartesian3.dot(scratchStartLocal, axisLocal),
       }
-    } else {
+    } else if (compute.type === 'uniform') {
       startOffsetLocal(seed, seed.startPointWorld, scratchStartLocal)
       resolved = {
-        kind: 'uniform',
+        type: 'uniform',
         startRadiusWorld: Cartesian3.magnitude(scratchStartLocal),
       }
+    } else {
+      return null
     }
 
     return {
@@ -104,7 +106,7 @@ export class ScaleController extends DragSession<ScaleSessionContext, EmptyDragD
 
     let denominator: number
     let numerator: number
-    if (context.constraint.kind === 'axis') {
+    if (context.constraint.type === 'axis') {
       denominator = context.constraint.startComponent
       numerator = Cartesian3.dot(scratchCurrentLocal, context.constraint.axisLocal)
     } else {
@@ -119,8 +121,8 @@ export class ScaleController extends DragSession<ScaleSessionContext, EmptyDragD
     const snappedRatio = snap(rawRatio, this.options.scaleSnap)
 
     const start = context.startControl.scale
-    const uniform = context.constraint.kind === 'uniform'
-    const axisConstraint = context.constraint.kind === 'axis' ? context.constraint : null
+    const uniform = context.constraint.type === 'uniform'
+    const axisConstraint = context.constraint.type === 'axis' ? context.constraint : null
     // 吸附后的比例先统一作用于三个分量，再逐轴执行 minScale。
     const resultingScale = Cartesian3.multiplyByScalar(start, snappedRatio, new Cartesian3())
     resultingScale.x = Math.max(this.options.minScale, resultingScale.x)
@@ -172,14 +174,14 @@ export class ScaleController extends DragSession<ScaleSessionContext, EmptyDragD
     context: ScaleSessionContext,
     frame: ControllerFrameContext,
   ): ScaleOverlayState {
-    const isAxis = context.constraint.kind === 'axis'
+    const isAxis = context.constraint.type === 'axis'
     const scale = gizmoScale(frame)
 
     return {
       color: context.handle.color.toCssColorString(),
       displayFactor: result.displayFactor,
       axisGuideWorld:
-        context.constraint.kind === 'axis'
+        context.constraint.type === 'axis'
           ? segmentThrough(
               context.planeOriginWorld,
               context.constraint.axisWorld,

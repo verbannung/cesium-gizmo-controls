@@ -21,7 +21,6 @@ import {
   Primitive,
   PrimitiveType,
 } from '@cesium/engine'
-import { INNER_VIEW_AXIS_RADIUS } from '../constants'
 import type { HandleId, MeshData } from './types'
 import type { Handle } from './handle'
 import ringFS from '../shader/ringFS.glsl?raw'
@@ -41,7 +40,7 @@ export const RING_HALF_WIDTH_PX = 3
 export const PLANE_MIN = 0.4
 export const PLANE_MAX = 0.7
 export const PICK_SIDES = 6
-export const PICK_SEGMENTS = 48
+export const PICK_SEGMENTS = 36
 
 const OVERLAY = {
   depthTest: { enabled: false },
@@ -101,17 +100,15 @@ function createGizmoMaterial(color: Color): Material {
 
 // —— 视觉：环 ——
 
-export function buildRing(opts: {
-  id: HandleId
-  u: Cartesian3
-  v: Cartesian3
-  color: Color
-  radius?: number
-  cullHalf: boolean
-  solid: boolean //是否是实心环
-}): Primitive[] {
-  const { id, u, v, color, cullHalf } = opts
-  const radius = opts.radius ?? INNER_VIEW_AXIS_RADIUS
+export function buildRing(
+  u: Cartesian3,
+  v: Cartesian3,
+  id: HandleId,
+  color: Color,
+  radius: number,
+  cullHalf: boolean,
+  halfWidthPx: number,
+): Primitive[] {
   const material = createGizmoMaterial(color)
 
   const appearance = new MaterialAppearance({
@@ -125,7 +122,7 @@ export function buildRing(opts: {
     renderState: OVERLAY_DEPTH,
   })
   ;(appearance as MaterialAppearance & { uniforms: Record<string, number> }).uniforms = {
-    u_halfWidthPx: RING_HALF_WIDTH_PX,
+    u_halfWidthPx: halfWidthPx,
     u_cullBackHalf: cullHalf ? 1 : 0,
   }
 
@@ -190,43 +187,6 @@ function buildRingStrip(u: Cartesian3, v: Cartesian3, radius: number): Geometry 
     primitiveType: PrimitiveType.TRIANGLES,
     boundingSphere: new BoundingSphere(Cartesian3.ZERO, radius),
   })
-}
-
-/**
- * 平移/通用视平面环。几何建在 u、v 张成的局部平面上。
- * 数据格式与 translateGeometry 一致：`(u, v) → Primitive[]`
- */
-
-export function buildViewRing(
-  u: Cartesian3,
-  v: Cartesian3,
-  opts: { id?: HandleId; color: Color; radius?: number; cullHalf?: boolean; solid?: boolean },
-): Primitive[] {
-  return buildRing({
-    id: opts.id ?? 'translate-view',
-    u,
-    v,
-    color: opts.color,
-    radius: opts.radius ?? INNER_VIEW_AXIS_RADIUS,
-    cullHalf: opts.cullHalf ?? false,
-    solid: opts.solid ?? false,
-  })
-}
-
-/**
- * 视平面环碰撞代理：圆环管。
- * 数据格式：`(u, v) → MeshData[]`
- */
-//TODO 支持整圆 以扩大碰撞体积
-export function buildViewRingMeshes(
-  u: Cartesian3,
-  v: Cartesian3,
-  radius = INNER_VIEW_AXIS_RADIUS,
-): MeshData[] {
-  const direction = Cartesian3.cross(u, v, new Cartesian3())
-  return [
-    buildRingTubeMesh(direction, u, v, radius, TUBE_RADIUS, PICK_SEGMENTS, PICK_SIDES),
-  ]
 }
 
 // —— 视觉：平移轴（线段 + 圆锥）——
@@ -581,4 +541,31 @@ export function buildRingTubeMesh(
     indices,
     boundingRadius: ringRadius + tubeRadius,
   }
+}
+
+/** u×v 平面三角扇圆盘，碰撞双面（由调用方关闭背半剔除）。 */
+export function buildSolidDiskMesh(u: Cartesian3, v: Cartesian3, radius: number): MeshData {
+  const positions: Cartesian3[] = [Cartesian3.clone(Cartesian3.ZERO, new Cartesian3())]
+  for (let i = 0; i < PICK_SEGMENTS; i++) {
+    const a = (i / PICK_SEGMENTS) * Math.PI * 2
+    const cos = Math.cos(a)
+    const sin = Math.sin(a)
+    positions.push(
+      new Cartesian3(
+        radius * (cos * u.x + sin * v.x),
+        radius * (cos * u.y + sin * v.y),
+        radius * (cos * u.z + sin * v.z),
+      ),
+    )
+  }
+
+  const indices = new Uint32Array(PICK_SEGMENTS * 3)
+  let p = 0
+  for (let i = 0; i < PICK_SEGMENTS; i++) {
+    indices[p++] = 0
+    indices[p++] = 1 + i
+    indices[p++] = 1 + ((i + 1) % PICK_SEGMENTS)
+  }
+
+  return { positions, indices, boundingRadius: radius }
 }

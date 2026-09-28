@@ -40,7 +40,7 @@ export class CenterController {
       this.geometryManager,
       this.overlayManager,
       options,
-      this,
+      this.mode,
     )
     this.eventManager.init()
     this.geometryManager.changeMode(this.mode)
@@ -57,15 +57,14 @@ export class CenterController {
       rotation: Quaternion.fromRotationMatrix(decomposed.R, new Quaternion()),
       scale: Cartesian3.clone(decomposed.S, new Cartesian3()),
     }
-    this.eventManager.changeMode()
+    this.eventManager.changeMode(mode)
     this.renderSystem.bind(control)
     this.setMode(mode)
   }
 
   setMode(mode: ControlMode): void {
+    this.eventManager.changeMode(mode)
     if (mode === this.mode) return
-
-    this.eventManager.changeMode()
     this.mode = mode
     this.geometryManager.changeMode(mode)
     this.overlayManager.deactivate()
