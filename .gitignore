@@ -19,6 +19,7 @@
 !src/
 !example/
 !tests/
+!docs/
 !tsconfig.json
 
 
